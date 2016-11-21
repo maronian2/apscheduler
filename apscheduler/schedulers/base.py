@@ -581,7 +581,8 @@ class BaseScheduler(six.with_metaclass(ABCMeta)):
             if next_run_time:
                 return self.modify_job(job_id, jobstore, next_run_time=next_run_time)
             else:
-                self.remove_job(job.id, jobstore)
+                self._logger.warning("Can't resume job with trigger-type 'Date' " +
+                                     "(no next_run_time defined)")
 
     def get_jobs(self, jobstore=None, pending=None):
         """
@@ -1038,15 +1039,12 @@ class BaseScheduler(six.with_metaclass(ABCMeta)):
                             events.append(event)
 
                     # Update the job if it has a next execution time.
-                    # Otherwise remove it from the job store.
                     job_next_run = job.trigger.get_next_fire_time(
                         past_run_times[-1] if past_run_times else None,
                         now)
                     if job_next_run:
                         job._modify(next_run_time=job_next_run)
                         jobstore.update_job(job)
-                    else:
-                        self.remove_job(job.id, jobstore_alias)
 
                 # Set a new next wakeup time if there isn't one yet or
                 # the jobstore has an even earlier one

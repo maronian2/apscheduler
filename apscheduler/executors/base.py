@@ -117,26 +117,15 @@ def run_job(job, logger_name, job_submission_id, jobstore_alias, run_time):
     """
     event = None
     logger = logging.getLogger(logger_name)
-<<<<<<< HEAD
-=======
-    
->>>>>>> event-driven-job-submission-handler
     logger.info('Running job "%s" (scheduled at %s)', job, run_time)
     try:
         retval = job.func(*job.args, **job.kwargs)
     except:
         exc, tb = sys.exc_info()[1:]
         formatted_tb = ''.join(format_tb(tb))
-        # TODO: This event is never dispatched! Perhaps instead of re-raising an exception,
-        # we can JUST return events w/ the exception's exc & traceback. In every executor,
-        # we check to see if f.exc is not None (future). If it is not None, we call 
-        # _run_job_error, the problem is we must choose between raising an exception below,
-        # or returning the EVENT_JOB_ERROR. Perhaps we should JUST return the events[], and
-        # check the event type to determine which function to call.
         event = JobExecutionEvent(EVENT_JOB_ERROR, job.id, jobstore_alias, run_time,
                                         job_submission_id, exception=exc, traceback=formatted_tb)
         logger.exception('Job "%s" raised an exception', job)
-        # Need to re-raise the exception
         
     else:
         event = JobExecutionEvent(EVENT_JOB_EXECUTED, job.id, jobstore_alias, run_time,

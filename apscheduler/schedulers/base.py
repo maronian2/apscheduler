@@ -1015,6 +1015,7 @@ class BaseScheduler(six.with_metaclass(ABCMeta)):
                         if job.misfire_grace_time is not None:
                             grace_time = timedelta(seconds=job.misfire_grace_time)
                             if difference > grace_time:
+                                # Don't run the job, past our grace time window!
                                 job_submission_id = self._add_job_submission(job)
                                 self._update_job_submission(job_submission_id, jobstore_alias,
                                                             state='missed')
@@ -1042,9 +1043,8 @@ class BaseScheduler(six.with_metaclass(ABCMeta)):
                     job_next_run = job.trigger.get_next_fire_time(
                         past_run_times[-1] if past_run_times else None,
                         now)
-                    if job_next_run:
-                        job._modify(next_run_time=job_next_run)
-                        jobstore.update_job(job)
+                    job._modify(next_run_time=job_next_run)
+                    jobstore.update_job(job)
 
                 # Set a new next wakeup time if there isn't one yet or
                 # the jobstore has an even earlier one

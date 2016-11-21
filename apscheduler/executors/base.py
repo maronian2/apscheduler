@@ -105,7 +105,7 @@ class BaseExecutor(six.with_metaclass(ABCMeta, object)):
         now = datetime.now(self._scheduler.timezone)
         self._scheduler._update_job_submission(event.job_submission_id, event.jobstore,
                                                state='failure', completed_at=now)
-        exc_info = (exc.__class__, event.exception, event.traceback)
+        exc_info = (event.exception.__class__, event.exception, event.traceback)
         self._logger.error('Error running job %s', event.job_id, exc_info=exc_info)
 
 

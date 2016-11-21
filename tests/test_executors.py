@@ -2,10 +2,13 @@ from datetime import datetime
 from threading import Event
 from types import TracebackType
 import time
+from traceback import format_tb
+import sys
 
 import pytest
 
-from apscheduler.events import EVENT_JOB_ERROR, EVENT_JOB_MISSED, EVENT_JOB_EXECUTED
+from apscheduler.events import (EVENT_JOB_ERROR, EVENT_JOB_MISSED, EVENT_JOB_EXECUTED,
+    JobExecutionEvent)
 from apscheduler.executors.base import MaxInstancesReachedError
 from apscheduler.schedulers.base import BaseScheduler
 
@@ -104,24 +107,32 @@ class FauxJob(object):
 
 
 def dummy_run_job(job, logger_name, job_submission_id, jobstore_alias, run_time):
-    raise Exception('dummy')
+    try:
+        raise Exception("dummy")
+    except:
+        exc, tb = sys.exc_info()[1:]
+        formatted_tb = ''.join(format_tb(tb))
+        return JobExecutionEvent(EVENT_JOB_ERROR, job.id, jobstore_alias, run_time,
+                             exception=exc, traceback=formatted_tb)
 
 
 def test_run_job_error(monkeypatch, executor):
     """Tests that _run_job_error is properly called if an exception is raised in run_job()"""
-    def run_job_error(job_id, job_submission_id, jobstore_alias, exc, traceback):
-        assert job_id == 'abc'
-        exc_traceback[:] = [exc, traceback]
+    
+    def run_job_error(_event):
+        assert _event.job_id == 'abc'
+        event_exception[:] = [_event.exception]
         event.set()
 
     event = Event()
-    exc_traceback = [None, None]
+    event_exception = [None]
     monkeypatch.setattr('apscheduler.executors.base.run_job', dummy_run_job)
     monkeypatch.setattr('apscheduler.executors.pool.run_job', dummy_run_job)
     monkeypatch.setattr(executor, '_run_job_error', run_job_error)
     executor.submit_job(FauxJob(), [])
 
     event.wait(2)
-    assert str(exc_traceback[0]) == "dummy"
-    if exc_traceback[1] is not None:
-        assert isinstance(exc_traceback[1], TracebackType)
+    assert str(event_exception[0]) == "dummy"
+
+
+

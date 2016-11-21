@@ -73,6 +73,7 @@ class BaseExecutor(six.with_metaclass(ABCMeta, object)):
         """Performs the actual task of scheduling `run_job` to be called."""
 
     def _handle_job_event(self, event):
+        self._logger.info("Handling event '{0}'".format(event))
         if event.code == EVENT_JOB_ERROR:
             self._run_job_error(event)
         elif event.code == EVENT_JOB_EXECUTED:
@@ -89,11 +90,11 @@ class BaseExecutor(six.with_metaclass(ABCMeta, object)):
             if self._instances[event.job_id] == 0:
                 del self._instances[event.job_id]
 
-        self._scheduler._dispatch_event(event)
-        
         now = datetime.now(self._scheduler.timezone)
         self._scheduler._update_job_submission(event.job_submission_id, event.jobstore,
                                                completed_at=now, state='success')
+        self._scheduler._dispatch_event(event)
+        
 
     def _run_job_error(self, event):
         """Called by the executor with the exception if there is an error  calling `run_job`."""
@@ -105,8 +106,8 @@ class BaseExecutor(six.with_metaclass(ABCMeta, object)):
         now = datetime.now(self._scheduler.timezone)
         self._scheduler._update_job_submission(event.job_submission_id, event.jobstore,
                                                state='failure', completed_at=now)
-        exc_info = (event.exception.__class__, event.exception, event.traceback)
-        self._logger.error('Error running job %s', event.job_id, exc_info=exc_info)
+        self._logger.error('Handled error found when running job %s', event.job_id)
+        self._scheduler._dispatch_event(event)
 
 
 def run_job(job, logger_name, job_submission_id, jobstore_alias, run_time):
@@ -124,7 +125,8 @@ def run_job(job, logger_name, job_submission_id, jobstore_alias, run_time):
         exc, tb = sys.exc_info()[1:]
         formatted_tb = ''.join(format_tb(tb))
         event = JobExecutionEvent(EVENT_JOB_ERROR, job.id, jobstore_alias, run_time,
-                                        job_submission_id, exception=exc, traceback=formatted_tb)
+                                        job_submission_id, exception=exc,
+                                        traceback=formatted_tb)
         logger.exception('Job "%s" raised an exception', job)
         
     else:

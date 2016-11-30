@@ -1,6 +1,7 @@
 from __future__ import absolute_import
 import six
 
+import json
 from apscheduler.jobstores.base import (
     BaseJobStore, JobLookupError, ConflictingIdError, JobSubmissionLookupError)
 from apscheduler.util import maybe_ref, datetime_to_utc_timestamp, utc_timestamp_to_datetime
@@ -66,6 +67,9 @@ class SQLAlchemyJobStore(BaseJobStore):
             Column("id", Integer(), primary_key=True),
             Column("state", Enum("submitted", "success", "failure", "missed", "orphaned")),
             Column("func", String()),
+            Column("kwargs", String()),
+            Column("exc_msg", String()),
+            Column("traceback", String()),
             Column("submitted_at", DateTime()),
             Column("completed_at", DateTime()),
             Column("apscheduler_job_id", Integer(), ForeignKey(tablename + ".id"))
@@ -95,6 +99,7 @@ class SQLAlchemyJobStore(BaseJobStore):
     def add_job_submission(self, job, now):
         insert = self.job_submissions_t.insert().values(**{
             'state': 'submitted',
+            'kwargs': json.dumps(job.kwargs),
             # TODO: Pickle the 'job.func' so we can recover from 2 diff sessions
             'func': job.func if isinstance(job.func, six.string_types) else job.func.__name__,
             'submitted_at': now,
@@ -127,7 +132,7 @@ class SQLAlchemyJobStore(BaseJobStore):
 
     def get_job_submissions_with_states(self, states=[]):
         selectable = select(map(lambda col: getattr(self.job_submissions_t.c, col),
-                            ["id", "state", "func", "submitted_at", "apscheduler_job_id"])).\
+                            ["id", "state", "exc_msg", "kwargs", "func", "submitted_at", "completed_at", "apscheduler_job_id"])).\
             order_by(self.job_submissions_t.c.submitted_at)
         if len(states) > 0:
             selectable = selectable.\

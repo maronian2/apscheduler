@@ -60,7 +60,8 @@ setup(
         'apscheduler.triggers': [
             'date = apscheduler.triggers.date:DateTrigger',
             'interval = apscheduler.triggers.interval:IntervalTrigger',
-            'cron = apscheduler.triggers.cron:CronTrigger'
+            'cron = apscheduler.triggers.cron:CronTrigger',
+            'manual = apscheduler.triggers.manual:ManualTrigger'
         ],
         'apscheduler.executors': [
             'debug = apscheduler.executors.debug:DebugExecutor',

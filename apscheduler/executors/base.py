@@ -105,7 +105,7 @@ class BaseExecutor(six.with_metaclass(ABCMeta, object)):
 
         now = datetime.now(self._scheduler.timezone)
         self._scheduler._update_job_submission(event.job_submission_id, event.jobstore,
-                                               state='failure', completed_at=now)
+                state='failure', exc_msg=unicode(event.exception, 'utf8'), traceback=event.traceback, completed_at=now)
         self._logger.error('Handled error found when running job %s', event.job_id)
         self._scheduler._dispatch_event(event)
 

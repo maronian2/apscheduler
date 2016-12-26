@@ -15,7 +15,7 @@ except ImportError:  # pragma: nocover
 try:
     from sqlalchemy import (
         create_engine, Table, Column, MetaData, Unicode, Float, DateTime,
-        Integer, String, LargeBinary, Enum, select, ForeignKey, and_)
+        Integer, String, LargeBinary, Enum, select, ForeignKey, Text, and_)
     from sqlalchemy.exc import IntegrityError
     from sqlalchemy.sql.expression import null
 except ImportError:  # pragma: nocover
@@ -66,10 +66,10 @@ class SQLAlchemyJobStore(BaseJobStore):
             "apscheduler_job_submissions", metadata,
             Column("id", Integer(), primary_key=True),
             Column("state", Enum("submitted", "success", "failure", "missed", "orphaned")),
-            Column("func", String()),
-            Column("kwargs", String()),
-            Column("exc_msg", String()),
-            Column("traceback", String()),
+            Column("func", Text()),
+            Column("kwargs", Text()),
+            Column("exc_msg", Text()),
+            Column("traceback", Text()),
             Column("submitted_at", DateTime()),
             Column("completed_at", DateTime()),
             Column("apscheduler_job_id", Integer(), ForeignKey(tablename + ".id"))
@@ -132,7 +132,7 @@ class SQLAlchemyJobStore(BaseJobStore):
 
     def get_job_submissions_with_states(self, states=[]):
         selectable = select(map(lambda col: getattr(self.job_submissions_t.c, col),
-                            ["id", "state", "exc_msg", "kwargs", "func", "submitted_at", "completed_at", "apscheduler_job_id"])).\
+                            ["id", "traceback", "state", "exc_msg", "kwargs", "func", "submitted_at", "completed_at", "apscheduler_job_id"])).\
             order_by(self.job_submissions_t.c.submitted_at)
         if len(states) > 0:
             selectable = selectable.\

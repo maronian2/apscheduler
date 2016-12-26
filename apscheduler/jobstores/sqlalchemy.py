@@ -72,7 +72,7 @@ class SQLAlchemyJobStore(BaseJobStore):
             Column("traceback", Text()),
             Column("submitted_at", DateTime()),
             Column("completed_at", DateTime()),
-            Column("apscheduler_job_id", Integer(), ForeignKey(tablename + ".id"))
+            Column("apscheduler_job_id", Unicode(191, _warn_on_bytestring=False), ForeignKey(tablename + ".id"))
         )
 
     def start(self, scheduler, alias):

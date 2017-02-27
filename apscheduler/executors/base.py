@@ -73,6 +73,7 @@ class BaseExecutor(six.with_metaclass(ABCMeta, object)):
         """Performs the actual task of scheduling `run_job` to be called."""
 
     def _handle_job_event(self, event):
+        
         self._logger.info("Handling event '{0}'".format(event))
         if event.code == EVENT_JOB_ERROR:
             self._run_job_error(event)
@@ -90,7 +91,7 @@ class BaseExecutor(six.with_metaclass(ABCMeta, object)):
             if self._instances[event.job_id] == 0:
                 del self._instances[event.job_id]
 
-        now = datetime.now(self._scheduler.timezone)
+        now = datetime.now()
         self._scheduler._update_job_submission(event.job_submission_id, event.jobstore,
                                                completed_at=now, state='success')
         self._scheduler._dispatch_event(event)
@@ -103,9 +104,12 @@ class BaseExecutor(six.with_metaclass(ABCMeta, object)):
             if self._instances[event.job_id] == 0:
                 del self._instances[event.job_id]
 
-        now = datetime.now(self._scheduler.timezone)
+        now = datetime.now()
+        
+        exc_msg=event.exception
+        
         self._scheduler._update_job_submission(event.job_submission_id, event.jobstore,
-                state='failure', exc_msg=unicode(event.exception, 'utf8'), traceback=event.traceback, completed_at=now)
+                state='failure', exc_msg=exc_msg, traceback=event.traceback, completed_at=now)
         self._logger.error('Handled error found when running job %s', event.job_id)
         self._scheduler._dispatch_event(event)
 

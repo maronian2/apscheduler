@@ -744,7 +744,7 @@ class BaseScheduler(six.with_metaclass(ABCMeta)):
         # Creates a new ``job_submission`` in the jobstore, and returns its ID
         with self._jobstores_lock:
             return self._jobstores[job._jobstore_alias].\
-                add_job_submission(job, datetime.now(self.timezone))
+                add_job_submission(job, datetime.now())
 
     def _configure(self, config):
         # Set general options

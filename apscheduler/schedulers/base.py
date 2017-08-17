@@ -1004,7 +1004,7 @@ class BaseScheduler(six.with_metaclass(ABCMeta)):
                             job_submission_id = self._add_job_submission(job)
                             # Insert missed job submissions for every job but the most recent...
                             self._update_job_submission(job_submission_id, jobstore_alias,
-                                                        state='missed', submitted_at=past_run_time)
+                                                        state='missed', submitted_at=past_run_time.replace(tzInfo=None))
                         # When coalescing, we collapse jobs list to JUST the most recent!
                         past_run_times = past_run_times[-1:] if past_run_times else past_run_times
 

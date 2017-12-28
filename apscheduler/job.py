@@ -269,7 +269,7 @@ class Job(object):
         self.executor = state['executor']
         self.args = state['args']
         self.kwargs = state['kwargs']
-        self.kwarg_metadata = state['kwarg_metadata']
+        self.kwarg_metadata = state.get('kwarg_metadata') or {}
         self.name = state['name']
         self.misfire_grace_time = state['misfire_grace_time']
         self.coalesce = state['coalesce']

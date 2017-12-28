@@ -356,8 +356,8 @@ class BaseScheduler(six.with_metaclass(ABCMeta)):
                 if callback == cb:
                     del self._listeners[i]
 
-    def add_job(self, func, trigger=None, args=None, kwargs=None, id=None, name=None,
-                misfire_grace_time=undefined, coalesce=undefined, max_instances=undefined,
+    def add_job(self, func, trigger=None, args=None, kwarg_metadata=None, kwargs=None, id=None,
+                name=None, misfire_grace_time=undefined, coalesce=undefined, max_instances=undefined,
                 next_run_time=undefined, jobstore='default', executor='default',
                 replace_existing=False, **trigger_args):
         """
@@ -411,6 +411,8 @@ class BaseScheduler(six.with_metaclass(ABCMeta)):
             'func': func,
             'args': tuple(args) if args is not None else (),
             'kwargs': dict(kwargs) if kwargs is not None else {},
+            'kwarg_metadata': dict(kwarg_metadata)
+                if kwarg_metadata is not None else {},
             'id': id,
             'name': name,
             'misfire_grace_time': misfire_grace_time,

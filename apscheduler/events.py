@@ -86,7 +86,8 @@ class JobExecutionEvent(JobEvent):
     """
 
     def __init__(self, code, job_id, jobstore, scheduled_run_time,
-                 job_submission_id=None, retval=None, exception=None, traceback=None):
+                 job_submission_id=None, retval=None, exception=None,
+                 traceback=None):
         super(JobExecutionEvent, self).__init__(code, job_id, jobstore)
         self.scheduled_run_time = scheduled_run_time
         self.retval = retval

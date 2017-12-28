@@ -65,42 +65,53 @@ class BaseExecutor(six.with_metaclass(ABCMeta, object)):
             if self._instances[job.id] >= job.max_instances:
                 raise MaxInstancesReachedError(job)
             job_submission_id = self._scheduler._add_job_submission(job)
-            self._do_submit_job(job, job_submission_id, run_time)
             self._instances[job.id] += 1
+            self._do_submit_job(job, job_submission_id, run_time)
 
     @abstractmethod
     def _do_submit_job(self, job, job_submission_id, run_time):
         """Performs the actual task of scheduling `run_job` to be called."""
 
-    def _run_job_success(self, job_id, job_submission_id, jobstore_alias, events):
+    def _handle_job_event(self, event):
+        
+        self._logger.info("Handling event '{0}'".format(event))
+        if event.code == EVENT_JOB_ERROR:
+            self._run_job_error(event)
+        elif event.code == EVENT_JOB_EXECUTED:
+            self._run_job_success(event)
+
+    def _run_job_success(self, event):
         """
         Called by the executor with the list of generated events when :func:`run_job` has been
         successfully called.
 
         """
         with self._lock:
-            self._instances[job_id] -= 1
-            if self._instances[job_id] == 0:
-                del self._instances[job_id]
+            self._instances[event.job_id] -= 1
+            if self._instances[event.job_id] == 0:
+                del self._instances[event.job_id]
 
-        for event in events:
-            self._scheduler._dispatch_event(event)
-        now = datetime.now(self._scheduler.timezone)
-        self._scheduler._update_job_submission(job_submission_id, jobstore_alias,
+        now = datetime.now()
+        self._scheduler._update_job_submission(event.job_submission_id, event.jobstore,
                                                completed_at=now, state='success')
+        self._scheduler._dispatch_event(event)
+        
 
-    def _run_job_error(self, job_id, job_submission_id, jobstore_alias, exc, traceback=None):
+    def _run_job_error(self, event):
         """Called by the executor with the exception if there is an error  calling `run_job`."""
         with self._lock:
-            self._instances[job_id] -= 1
-            if self._instances[job_id] == 0:
-                del self._instances[job_id]
+            self._instances[event.job_id] -= 1
+            if self._instances[event.job_id] == 0:
+                del self._instances[event.job_id]
 
-        now = datetime.now(self._scheduler.timezone)
-        self._scheduler._update_job_submission(job_submission_id, jobstore_alias,
-                                               state='failure', completed_at=now)
-        exc_info = (exc.__class__, exc, traceback)
-        self._logger.error('Error running job %s', job_id, exc_info=exc_info)
+        now = datetime.now()
+        
+        exc_msg=event.exception
+        
+        self._scheduler._update_job_submission(event.job_submission_id, event.jobstore,
+                state='failure', exc_msg=exc_msg, traceback=event.traceback, completed_at=now)
+        self._logger.error('Handled error found when running job %s', event.job_id)
+        self._scheduler._dispatch_event(event)
 
 
 def run_job(job, logger_name, job_submission_id, jobstore_alias, run_time):
@@ -109,7 +120,7 @@ def run_job(job, logger_name, job_submission_id, jobstore_alias, run_time):
     scheduler.
 
     """
-    events = []
+    event = None
     logger = logging.getLogger(logger_name)
     logger.info('Running job "%s" (scheduled at %s)', job, run_time)
     try:
@@ -117,12 +128,14 @@ def run_job(job, logger_name, job_submission_id, jobstore_alias, run_time):
     except:
         exc, tb = sys.exc_info()[1:]
         formatted_tb = ''.join(format_tb(tb))
-        events.append(JobExecutionEvent(EVENT_JOB_ERROR, job.id, jobstore_alias, run_time,
-                                        job_submission_id, exception=exc, traceback=formatted_tb))
+        event = JobExecutionEvent(EVENT_JOB_ERROR, job.id, jobstore_alias, run_time,
+                                        job_submission_id, exception=exc,
+                                        traceback=formatted_tb)
         logger.exception('Job "%s" raised an exception', job)
+        
     else:
-        events.append(JobExecutionEvent(EVENT_JOB_EXECUTED, job.id, jobstore_alias, run_time,
-                                        job_submission_id, retval=retval))
+        event = JobExecutionEvent(EVENT_JOB_EXECUTED, job.id, jobstore_alias, run_time,
+                                        job_submission_id, retval=retval)
         logger.info('Job "%s" executed successfully', job)
 
-    return events
+    return event

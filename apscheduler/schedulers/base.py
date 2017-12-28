@@ -581,7 +581,8 @@ class BaseScheduler(six.with_metaclass(ABCMeta)):
             if next_run_time:
                 return self.modify_job(job_id, jobstore, next_run_time=next_run_time)
             else:
-                self.remove_job(job.id, jobstore)
+                self._logger.warning("Can't resume job with trigger-type 'Date' " +
+                                     "(no next_run_time defined)")
 
     def get_jobs(self, jobstore=None, pending=None):
         """
@@ -743,7 +744,7 @@ class BaseScheduler(six.with_metaclass(ABCMeta)):
         # Creates a new ``job_submission`` in the jobstore, and returns its ID
         with self._jobstores_lock:
             return self._jobstores[job._jobstore_alias].\
-                add_job_submission(job, datetime.now(self.timezone))
+                add_job_submission(job, datetime.now())
 
     def _configure(self, config):
         # Set general options
@@ -1003,7 +1004,7 @@ class BaseScheduler(six.with_metaclass(ABCMeta)):
                             job_submission_id = self._add_job_submission(job)
                             # Insert missed job submissions for every job but the most recent...
                             self._update_job_submission(job_submission_id, jobstore_alias,
-                                                        state='missed', submitted_at=past_run_time)
+                                                        state='missed', submitted_at=past_run_time.replace(tzInfo=None))
                         # When coalescing, we collapse jobs list to JUST the most recent!
                         past_run_times = past_run_times[-1:] if past_run_times else past_run_times
 
@@ -1014,6 +1015,7 @@ class BaseScheduler(six.with_metaclass(ABCMeta)):
                         if job.misfire_grace_time is not None:
                             grace_time = timedelta(seconds=job.misfire_grace_time)
                             if difference > grace_time:
+                                # Don't run the job, past our grace time window!
                                 job_submission_id = self._add_job_submission(job)
                                 self._update_job_submission(job_submission_id, jobstore_alias,
                                                             state='missed')
@@ -1038,15 +1040,11 @@ class BaseScheduler(six.with_metaclass(ABCMeta)):
                             events.append(event)
 
                     # Update the job if it has a next execution time.
-                    # Otherwise remove it from the job store.
                     job_next_run = job.trigger.get_next_fire_time(
                         past_run_times[-1] if past_run_times else None,
                         now)
-                    if job_next_run:
-                        job._modify(next_run_time=job_next_run)
-                        jobstore.update_job(job)
-                    else:
-                        self.remove_job(job.id, jobstore_alias)
+                    job._modify(next_run_time=job_next_run)
+                    jobstore.update_job(job)
 
                 # Set a new next wakeup time if there isn't one yet or
                 # the jobstore has an even earlier one

@@ -35,7 +35,7 @@ class Job(object):
 
     __slots__ = ('_scheduler', '_jobstore_alias', 'id', 'trigger', 'executor', 'func', 'func_ref',
                  'args', 'kwargs', 'name', 'misfire_grace_time', 'coalesce', 'max_instances',
-                 'next_run_time')
+                 'next_run_time', 'kwarg_metadata')
 
     def __init__(self, scheduler, id=None, **kwargs):
         super(Job, self).__init__()
@@ -147,10 +147,12 @@ class Job(object):
                 raise ValueError('The job ID may not be changed')
             approved['id'] = value
 
-        if 'func' in changes or 'args' in changes or 'kwargs' in changes:
+        if set(['func', 'args', 'kwargs', 'kwarg_metadata']) & changes.keys():
             func = changes.pop('func') if 'func' in changes else self.func
             args = changes.pop('args') if 'args' in changes else self.args
             kwargs = changes.pop('kwargs') if 'kwargs' in changes else self.kwargs
+            kwarg_metadata = changes.pop('kwarg_metadata') \
+                if 'kwarg_metadata' in changes else self.kwarg_metadata
 
             if isinstance(func, six.string_types):
                 func_ref = func
@@ -171,6 +173,9 @@ class Job(object):
                 raise TypeError('args must be a non-string iterable')
             if isinstance(kwargs, six.string_types) or not isinstance(kwargs, Mapping):
                 raise TypeError('kwargs must be a dict-like object')
+            if isinstance(kwarg_metadata, six.string_types) or not isinstance(
+                    kwarg_metadata, Mapping):
+                raise TypeError('kwarg_metadata must be a dict-like object')
 
             check_callable_args(func, args, kwargs)
 
@@ -178,6 +183,7 @@ class Job(object):
             approved['func_ref'] = func_ref
             approved['args'] = args
             approved['kwargs'] = kwargs
+            approved['kwarg_metadata'] = kwarg_metadata
 
         if 'name' in changes:
             value = changes.pop('name')
@@ -243,6 +249,7 @@ class Job(object):
             'executor': self.executor,
             'args': self.args,
             'kwargs': self.kwargs,
+            'kwarg_metadata': self.kwarg_metadata,
             'name': self.name,
             'misfire_grace_time': self.misfire_grace_time,
             'coalesce': self.coalesce,
@@ -262,6 +269,7 @@ class Job(object):
         self.executor = state['executor']
         self.args = state['args']
         self.kwargs = state['kwargs']
+        self.kwarg_metadata = state['kwarg_metadata']
         self.name = state['name']
         self.misfire_grace_time = state['misfire_grace_time']
         self.coalesce = state['coalesce']

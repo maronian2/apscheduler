@@ -136,7 +136,7 @@ class SQLAlchemyJobStore(BaseJobStore):
         trunc_kwargs = {}
         for kwarg, val in kwargs.items():
             if isinstance(val, six.string_types) and len(val) > size:
-                trunc_kwargs[kwarg = "<truncated to 1KB>..." + val[:size]
+                trunc_kwargs[kwarg] = "<truncated to 1KB>..." + val[:size]
             else:
                 trunc_kwargs[kwarg] = val
         return trunc_kwargs

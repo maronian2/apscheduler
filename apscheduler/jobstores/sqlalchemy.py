@@ -97,9 +97,10 @@ class SQLAlchemyJobStore(BaseJobStore):
         return utc_timestamp_to_datetime(next_run_time)
 
     def add_job_submission(self, job, now):
+        truncated_kwargs = self._truncate_str_kwargs(job.kwargs, 1024)
         insert = self.job_submissions_t.insert().values(**{
             'state': 'submitted',
-            'kwargs': json.dumps(job.kwargs),
+            'kwargs': json.dumps(truncated_kwargs),
             # TODO: Pickle the 'job.func' so we can recover from 2 diff sessions
             'func': job.func if isinstance(job.func, six.string_types) else job.func.__name__,
             'submitted_at': now,
@@ -129,6 +130,16 @@ class SQLAlchemyJobStore(BaseJobStore):
         result = self.engine.execute(update)
         if result.rowcount == 0:
             raise JobSubmissionLookupError(job_submission_id)
+
+    @staticmethod
+    def _truncate_str_kwargs(kwargs, size):
+        trunc_kwargs = {}
+        for kwarg, val in kwargs.items():
+            if isinstance(val, six.string_types) and len(val) > size:
+                trunc_kwargs[kwarg = "<truncated to 1KB>..." + val[:size]
+            else:
+                trunc_kwargs[kwarg] = val
+        return trunc_kwargs
 
     def get_job_submissions_with_states(self, states=[]):
         selectable = select(map(lambda col: getattr(self.job_submissions_t.c, col),

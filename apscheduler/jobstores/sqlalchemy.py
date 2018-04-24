@@ -223,9 +223,8 @@ class SQLAlchemyJobStore(BaseJobStore):
                 failed_job_ids.add(row.id)
 
         # Remove all the jobs we failed to restore
-        if failed_job_ids:
-            delete = self.jobs_t.delete().where(self.jobs_t.c.id.in_(failed_job_ids))
-            self.engine.execute(delete)
+        for job_id in failed_job_ids:
+            self.remove_job(job_id)
 
         return jobs
 

@@ -185,7 +185,10 @@ class SQLAlchemyJobStore(BaseJobStore):
             raise JobLookupError(id)
 
     def remove_job(self, job_id):
+        delete_job_submissions = self.job_submissions_t.delete().where(
+            self.job_submissions_t.c.apscheduler_job_id == job_id)
         delete = self.jobs_t.delete().where(self.jobs_t.c.id == job_id)
+        self.engine.execute(delete_job_submissions)
         result = self.engine.execute(delete)
         if result.rowcount == 0:
             raise JobLookupError(job_id)

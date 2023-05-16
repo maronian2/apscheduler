@@ -1,7 +1,7 @@
 from __future__ import print_function
 
 from abc import ABCMeta, abstractmethod
-from collections import MutableMapping
+from collections.abc import MutableMapping
 from threading import RLock
 from datetime import datetime, timedelta
 from logging import getLogger
